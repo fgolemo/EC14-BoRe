@@ -38,6 +38,11 @@
 <div id="info">
     EC14 Body Renderer (ec14-bore)</br>
     MOVE mouse &amp; press LEFT/A: rotate, MIDDLE/S: zoom, RIGHT/D: pan</br>
+    use ARROW UP or ARROW DOWN to make layers visible/invisible.</br>
+    Colors: <span style="color:#0FF">Fat</span>,
+    <span style="color:blue">Bone</span>,
+    <span style="color:green">Muscle -</span>,
+    <span style="color:red">Muscle +</span></br>
     <input type="file" id="files" name="fileN"/>
 </div>
 <div id="container"></div>
@@ -1648,11 +1653,20 @@
 
     if (!Detector.webgl) Detector.addGetWebGLMessage();
 
-    var container, stats;
+    var container,stats,camera,controls,scene,renderer,corss;
+    var rendererExists = false;
 
-    var camera, controls, scene, renderer;
+    function initScene() {
+      var container=null ,
+      // stats=null,
+      camera=null,
+      controls=null,
+      scene=null,
+      renderer=null,
+      corss=null;
+    }
 
-    var cross;
+
 
     function onWindowResize() {
 
@@ -1787,13 +1801,20 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
 
         container = document.getElementById('container');
-        container.appendChild(renderer.domElement);
+        if (rendererExists === false) {
+          container.appendChild(renderer.domElement);
 
-        stats = new Stats();
-        stats.domElement.style.position = 'absolute';
-        stats.domElement.style.top = '0px';
-        stats.domElement.style.zIndex = 100;
-        container.appendChild(stats.domElement);
+          stats = new Stats();
+          stats.domElement.style.position = 'absolute';
+          stats.domElement.style.top = '0px';
+          stats.domElement.style.zIndex = 100;
+          container.appendChild(stats.domElement);
+          rendererExists=renderer.domElement;
+        } else {
+          container.removeChild(rendererExists);
+          container.appendChild(renderer.domElement);
+          rendererExists = renderer.domElement;
+        }
 
         //
 
@@ -1854,6 +1875,13 @@
     var layersMesh = [];
     var layersActive = 10;
 
+    function initLayers() {
+      layers = [];
+      layersRaw = [];
+      layersMesh = [];
+      layersActive = 10;
+    }
+
     function makeProperLayers() {
         for (var z in layersRaw) {
             var layerRawSplit = layersRaw[z].split("");
@@ -1885,13 +1913,18 @@
 
         reader.onload = (function (theFile) {
             return function (e) {
+                initLayers();
                 var lines = e.target.result.split("\n");
                 var goodLines = 0;
+                var layerFaulty = false;
                 for (var i in lines) {
                     var line = lines[i];
                     if (line.substr(0, 7) == "<Layer>") {
                         var layer = line.substr(7, 100);
 //                            console.log(layer);
+                        if (layer.length != 100) {
+                          layerFaulty = true;
+                        }
                         layersRaw.push(layer);
                         goodLines++;
                     }
@@ -1900,8 +1933,14 @@
                     }
                 }
 //                console.log(layers);
-                makeProperLayers();
-                drawScene();
+                if (layerFaulty || layersRaw.length != 10) {
+                  alert("sorry, not a good VXA file.\nPlease try a different one.")
+                } else {
+                  makeProperLayers();
+                  initScene();
+                  drawScene();
+                }
+
             };
         })(fileN);
 
